@@ -1,4 +1,10 @@
 #-*-coding:utf-8-*-
+'''
+使用决策树进行预测，效果比随机森林好一些
+'''
+
+
+
 
 import numpy as np
 import pandas as pd
