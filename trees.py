@@ -1,10 +1,4 @@
 #-*-coding:utf-8-*-
-'''
-使用决策树进行预测，效果比随机森林好一些
-'''
-
-
-
 
 import numpy as np
 import pandas as pd
@@ -17,19 +11,17 @@ from sklearn.model_selection import train_test_split
 def load_data():
     filename = 'training.csv'
     data_pd = pd.read_csv(filename, header=None)
-    # data_pd = data_p.sample(frac=1)
+    # data_pd = data_pd.sample(frac=1)
     data_1 = data_pd.replace({'1':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13})
     data_sor = data_sort(data_1)
-    # data_sor1 = data_sor.drop_duplicates()
-    data_2 = data_sor.replace({1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'10', 11:'J', 12:'Q', 13:'K'})
+    # data_2 = data_sor.replace({1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'10', 11:'J', 12:'Q', 13:'K'})
     huase = huase_count(data_sor)
     data_3 = data_pd.drop([10], axis=1)
     
     
     #one-hot编码
     raw_x = pd.get_dummies(data_3)
-    print(np.shape(raw_x))
-    print('=====================')
+ 
     Y_train = data_pd[10]
     x_train = pd.DataFrame()
     x_train['sub_1'] = data_sor['b'] - 0
@@ -50,21 +42,52 @@ def load_data():
                      (data_sor['h'] - x_train['avg'])**2 + (data_sor['j'] - x_train['avg'])**2) / 5
     
     
-    contiunous = []
+    #针对8/9增加特征
+    contiunous_5 = []; like_se_5 = []; like_se_4 = [];contiunous_4 = []; like_4 = []
     for i in range(len(x_train)):
         if x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i]['sub_5'] == 1:
-            contiunous.append(1)
-            print(i)
+            contiunous_5.append(1)
         else:
-            contiunous.append(0)
-    contiunous = pd.DataFrame(contiunous, columns=['conti'])
-    X_train = x_train.join(contiunous)
+            contiunous_5.append(0)
+        
+        #7的特征
+        if x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == 0:
+            like_4.append(1)
+        else:
+            like_4.append(0)
             
+        #8的特征
+        if x_train.loc[i]['hua_c'] == 5 or x_train.loc[i]['hua_d'] == 5 or x_train.loc[i]['hua_s'] == 5 or \
+                        x_train.loc[i]['hua_h'] == 5 and x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i]['sub_5'] == 1:
+            like_se_5.append(1)
+        else:
+            like_se_5.append(0)
+            
+        #9的特征
+        if x_train.loc[i]['sub_1'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i]['sub_5'] == 1 and x_train.loc[i]['hua_c'] == 5 or x_train.loc[i]['hua_d'] == 5 or x_train.loc[i]['hua_s'] == 5 or \
+                        x_train.loc[i]['hua_h'] == 5:
+            contiunous_4.append(1)
+        else:
+            contiunous_4.append(0)
+
+    like_4 = pd.DataFrame(like_4, columns=['like_4']) #7:四个相同的纸牌大小
+    x_train = x_train.join(like_4)
+    contiunous_4 = pd.DataFrame(contiunous_4, columns=['conti_4'])#9：四个连续的纸牌大小
+    x_train = x_train.join(contiunous_4)
+    like_se_5 = pd.DataFrame(like_se_5, columns=['like_se_5'])#8:5个花色相同
+    x_train = x_train.join(like_se_5)
+    contiunous_5 = pd.DataFrame(contiunous_5, columns=['conti_5'])#8：五个连续的纸牌大小
+    X_train = x_train.join(contiunous_5)
+    
     print(X_train)
+
+
     
-    
+    #x_train, x_test, y_train, y_test = train_test_split(x_train, Y_train, test_size=0.2)
+    # return x_train, x_test, y_train, y_test, 1, 2
     x_train, x_test, y_train, y_test = train_test_split(X_train, Y_train, test_size=0.2)
     return x_train, x_test, y_train, y_test, X_train, Y_train
+   
 
 
 #统计纸牌各个花色的个数
@@ -176,8 +199,16 @@ def trees(x_train, x_test, y_train, y_test):
     clf.fit(x_train, y_train)
     score_test = clf.score(x_test, y_test)
     print(score_test)
-    score = cross_val_score(clf, x_train, y_train, cv=10)
-    print(score)
+    # score = cross_val_score(clf, x_train, y_train, cv=10)
+    # print(score)
+    # 记录预测结果做比较
+    results = clf.predict(x_test)
+    y_test.to_csv('label.csv', header=None)
+    f = open('result.txt', 'w')
+    for i in results:
+        f.write(str(i) + '\n')
+    f.close()
+    
     
     #随机森林
     # clf = RandomForestClassifier()
@@ -185,9 +216,7 @@ def trees(x_train, x_test, y_train, y_test):
     # score_test = clf.score(x_test, y_test)
     # print(score_test)
     # score = cross_val_score(clf, x_train, y_train, cv=10)
-    # score_t = clf.score(x_test, y_test)
     # print(score)
-    # print(score_t)
     return clf
 
 
@@ -205,8 +234,6 @@ def predict(clf):
 
     # one-hot编码
     raw_x = pd.get_dummies(data_pd)
-    print(np.shape(raw_x))
-    print('*************************')
     
     
     x_train = pd.DataFrame()
@@ -228,6 +255,7 @@ def predict(clf):
     data_sor['f'] - x_train['avg']) ** 2 + \
                       (data_sor['h'] - x_train['avg']) ** 2 + (data_sor['j'] - x_train['avg']) ** 2) / 5
     
+    '''
     contiunous = []
     for i in range(len(x_train)):
         if x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i][
@@ -238,17 +266,65 @@ def predict(clf):
             contiunous.append(0)
     contiunous = pd.DataFrame(contiunous, columns=['conti'])
     pre_train = x_train.join(contiunous)
-    
+    '''
+    # 针对8/9增加特征
+    contiunous_5 = [];
+    like_se_5 = [];
+    like_se_4 = [];
+    contiunous_4 = [];
+    like_4 = []
+    for i in range(len(x_train)):
+        if x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i][
+            'sub_5'] == 1:
+            contiunous_5.append(1)
+        else:
+            contiunous_5.append(0)
+
+        # 7的特征
+        if x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == 0:
+            like_4.append(1)
+        else:
+            like_4.append(0)
+
+        # 8的特征
+        if x_train.loc[i]['hua_c'] == 5 or x_train.loc[i]['hua_d'] == 5 or x_train.loc[i]['hua_s'] == 5 or \
+                                x_train.loc[i]['hua_h'] == 5 and x_train.loc[i]['sub_2'] == x_train.loc[i]['sub_3'] == \
+                        x_train.loc[i]['sub_4'] == x_train.loc[i]['sub_5'] == 1:
+            like_se_5.append(1)
+        else:
+            like_se_5.append(0)
+
+        # 9的特征
+        if x_train.loc[i]['sub_1'] == x_train.loc[i]['sub_3'] == x_train.loc[i]['sub_4'] == x_train.loc[i][
+            'sub_5'] == 1 and x_train.loc[i]['hua_c'] == 5 or x_train.loc[i]['hua_d'] == 5 or x_train.loc[i][
+            'hua_s'] == 5 or \
+                        x_train.loc[i]['hua_h'] == 5:
+            contiunous_4.append(1)
+        else:
+            contiunous_4.append(0)
+
+    like_4 = pd.DataFrame(like_4, columns=['like_4'])  # 7:四个相同的纸牌大小
+    x_train = x_train.join(like_4)
+    contiunous_4 = pd.DataFrame(contiunous_4, columns=['conti_4'])  # 9：四个连续的纸牌大小
+    x_train = x_train.join(contiunous_4)
+    like_se_5 = pd.DataFrame(like_se_5, columns=['like_se_5'])  # 8:5个花色相同
+    x_train = x_train.join(like_se_5)
+    contiunous_5 = pd.DataFrame(contiunous_5, columns=['conti_5'])  # 8：五个连续的纸牌大小
+    pre_train = x_train.join(contiunous_5)
     results = clf.predict(pre_train)
+    
+    
     f = open('1.txt', 'w')
     for i in results:
         f.write(str(i) + '\n')
     f.close()
-    print(i)
     
     print('结束！！')
     
 if __name__=='__main__':
     x_train, x_test, y_train, y_test, prex_train, prey_train = load_data()
+    # clf = trees(x_train, x_test, y_train, y_test)
+    
+    #预测
     clf = trees(prex_train, x_test, prey_train, y_test)
     predict(clf)
